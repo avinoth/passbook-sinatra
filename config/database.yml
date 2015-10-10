@@ -1,0 +1,8 @@
+development:
+  adapter: postgresql
+  database: passbook_sinatra_development
+  host: localhost
+
+production:
+  adapter: postgresql
+  encoding: unicode
