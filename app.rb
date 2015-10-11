@@ -12,13 +12,15 @@ require './models/log'
 
 require './config/passbook'
 
+require 'grocer'
+
 
 # Endpoint to generate a pass file
 post '/passbooks' do
   request.body.rewind
   data = JSON.parse request.body.read
 
-  unless @pass = Pass.find_by(serial_number: data['serialNumber'])
+  unless @pass = find_pass_with(data['serialNumber'])
     @pass = Pass.create(serial_number: data['serialNumber'], data: data)
   end
   passbook = Passbook::PKPass.new @pass.data.to_json.to_s
@@ -26,6 +28,21 @@ post '/passbooks' do
   gen_pass = passbook.file
   send_file(gen_pass.path, type: 'application/vnd.apple.pkpass', disposition: 'attachment', filename: "pass.pkpass")
 end
+
+get '/passbooks/update' do
+  request.body.rewind
+  data = JSON.parse request.body.read
+
+  unless @pass = find_pass_with(data['serialNumber'])
+    @pass = Pass.create(serial_number: data['serialNumber'], data: data)
+    {:response => 'Pass newly created.'}.to_json
+  else
+    @pass.update(data: data, version: Time.now.utc.to_i)
+    push_updates_for_pass
+    {:response => 'Pass updated and sent push notifications.'}.to_json
+  end
+end
+
 
 module Passbook
   class PassbookNotification
@@ -112,4 +129,11 @@ end
 
 def valid_device? identifier
   @device = Device.find_by(identifier: identifier)
+end
+
+def push_updates_for_pass
+  @pass.devices.each do |device|
+    puts "Sending push notification for device - #{device.push_token}"
+    Passbook::PushNotification.send_notification device.push_token
+  end
 end
