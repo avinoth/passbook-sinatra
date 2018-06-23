@@ -29,7 +29,7 @@ post '/passbooks' do
   send_file(gen_pass.path, type: 'application/vnd.apple.pkpass', disposition: 'attachment', filename: "pass.pkpass")
 end
 
-get '/passbooks/update' do
+post '/passbooks/update' do
   request.body.rewind
   data = JSON.parse request.body.read
 
